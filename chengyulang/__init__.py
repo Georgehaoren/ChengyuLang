@@ -11,11 +11,32 @@ from .catalog import (
     词库加载,
     词库错误,
 )
+from .compiler import (
+    CompilationResult,
+    compile_file,
+    compile_source,
+    default_output_path,
+    write_compilation,
+    写入编译产物,
+    编译文件,
+    编译源码,
+    编译结果,
+    默认输出路径,
+)
+from .diagnostics import (
+    CompilationStage,
+    Diagnostic,
+    render_diagnostic,
+    渲染诊断,
+    编译诊断,
+    编译阶段,
+)
 from .executor import ExecutionResult, execute, 执行, 执行结果
 from .runtime import (
     ChengyuEggError,
     ChengyuRuntimeError,
     call_idiom,
+    build_runtime_environment,
     register_idiom,
     registered_implementations,
     trigger_egg,
@@ -25,10 +46,23 @@ from .runtime import (
     注册成语,
     触发彩蛋,
     调用成语,
+    构建运行环境,
 )
-from .translator import TranslationError, translate, 翻译, 翻译错误
-
-__version__ = "0.1.0"
+from .translator import (
+    IdiomHit,
+    StructureHit,
+    TranslationError,
+    TranslationResult,
+    analyze_and_translate,
+    translate,
+    分析并翻译,
+    成语命中,
+    结构命中,
+    翻译,
+    翻译结果,
+    翻译错误,
+)
+from .version import __version__
 
 __all__ = [
     "__version__",
@@ -39,11 +73,24 @@ __all__ = [
     "合并词库",
     "翻译",
     "翻译错误",
+    "分析并翻译",
+    "翻译结果",
+    "成语命中",
+    "结构命中",
+    "编译源码",
+    "编译文件",
+    "编译结果",
+    "写入编译产物",
+    "默认输出路径",
+    "编译诊断",
+    "编译阶段",
+    "渲染诊断",
     "执行",
     "执行结果",
     "注册成语",
     "调用成语",
     "触发彩蛋",
+    "构建运行环境",
     "已注册实现",
     "成语运行时错误",
     "成语彩蛋错误",
@@ -53,13 +100,25 @@ __all__ = [
     "merge_catalogs",
     "translate",
     "TranslationError",
+    "analyze_and_translate",
+    "TranslationResult",
+    "IdiomHit",
+    "StructureHit",
+    "compile_source",
+    "compile_file",
+    "CompilationResult",
+    "write_compilation",
+    "default_output_path",
+    "Diagnostic",
+    "CompilationStage",
+    "render_diagnostic",
     "execute",
     "ExecutionResult",
     "register_idiom",
     "call_idiom",
     "trigger_egg",
+    "build_runtime_environment",
     "registered_implementations",
     "ChengyuRuntimeError",
     "ChengyuEggError",
 ]
-

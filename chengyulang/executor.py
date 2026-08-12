@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import sys
-from copy import deepcopy
 from dataclasses import dataclass
-from functools import partial
 from typing import Any, TextIO
 
 from .catalog import 成语词典, 成语词库
-from .runtime import 调用成语, 触发彩蛋
-from .translator import 翻译, 翻译错误
+from .compiler import 编译源码
+from .diagnostics import 渲染诊断
+from .runtime import 构建运行环境
 
 
 @dataclass(slots=True)
@@ -39,13 +38,6 @@ class 执行结果:
         return self.异常
 
 
-def _成语函数表(词典: 成语词库) -> dict[str, Any]:
-    return {
-        名称: partial(调用成语, 名称, _词典=词典)
-        for 名称 in 词典
-    }
-
-
 def _公开命名空间(命名空间: dict[str, Any]) -> dict[str, Any]:
     内部名称 = {"__chengyu_functions__", "__chengyu_egg__", "__builtins__"}
     return {键: 值 for 键, 值 in 命名空间.items() if 键 not in 内部名称}
@@ -61,28 +53,31 @@ def 执行(
 ) -> 执行结果:
     """Translate and execute trusted ChengyuLang source with friendly errors."""
 
-    当前词典 = deepcopy(成语词典 if 词典 is None else 词典)
+    当前词典 = 成语词典 if 词典 is None else 词典
     错误流 = sys.stderr if 错误输出 is None else 错误输出
-    译文 = ""
+    编译产物 = 编译源码(源码, 词典=当前词典)
+    译文 = 编译产物.内部译文
     命名空间 = dict(初始命名空间 or {})
-    命名空间["__chengyu_functions__"] = _成语函数表(当前词典)
-    命名空间["__chengyu_egg__"] = partial(触发彩蛋, _词典=当前词典)
+    函数表, 彩蛋函数 = 构建运行环境(当前词典)
+    命名空间["__chengyu_functions__"] = 函数表
+    命名空间["__chengyu_egg__"] = 彩蛋函数
+
+    if not 编译产物.成功:
+        for 诊断 in 编译产物.诊断信息:
+            if 诊断.级别 == "error":
+                print(渲染诊断(诊断), file=错误流)
+        首个错误 = next(
+            诊断 for 诊断 in 编译产物.诊断信息 if 诊断.级别 == "error"
+        )
+        异常 = SyntaxError(首个错误.消息)
+        return 执行结果(False, 译文, _公开命名空间(命名空间), 异常)
 
     try:
-        译文 = 翻译(源码, 当前词典)
         if 显示译文:
             print("—— Python 译文 ——")
             print(译文)
         字节码 = compile(译文, "<成语语>", "exec")
         exec(字节码, 命名空间)
-    except (翻译错误, SyntaxError) as 错误:
-        行号 = getattr(错误, "lineno", None)
-        位置 = f"（第 {行号} 行）" if 行号 else ""
-        print(
-            f"💥 句法不通，请重新断句！{位置}{错误}",
-            file=错误流,
-        )
-        return 执行结果(False, 译文, _公开命名空间(命名空间), 错误)
     except Exception as 错误:
         print(f"💥 成语运行时出错：{错误}", file=错误流)
         return 执行结果(False, 译文, _公开命名空间(命名空间), 错误)
@@ -93,4 +88,3 @@ def 执行(
 # English aliases.
 ExecutionResult = 执行结果
 execute = 执行
-

@@ -7,13 +7,99 @@ import token
 import tokenize
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Literal, TypeAlias
 
 from .catalog import 成语词典, 成语词库
 
 
 class 翻译错误(SyntaxError):
     """Raised when source cannot be tokenized for translation."""
+
+
+成语模式: TypeAlias = Literal["connected", "spaced"]
+
+
+@dataclass(frozen=True, slots=True)
+class 成语命中:
+    """A connected call or spaced Easter egg found in source."""
+
+    文本: str
+    模式: 成语模式
+    运行时: str
+    行号: int
+    列号: int
+    结束行号: int
+    结束列号: int
+
+    def 转为字典(self) -> dict[str, object]:
+        return {
+            "text": self.文本,
+            "mode": self.模式,
+            "runtime": self.运行时,
+            "line": self.行号,
+            "column": self.列号,
+            "end_line": self.结束行号,
+            "end_column": self.结束列号,
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return self.转为字典()
+
+
+@dataclass(frozen=True, slots=True)
+class 结构命中:
+    """A classical control-flow or output keyword found in source."""
+
+    文本: str
+    类型: str
+    Python映射: str
+    行号: int
+    列号: int
+
+    def 转为字典(self) -> dict[str, object]:
+        return {
+            "text": self.文本,
+            "kind": self.类型,
+            "python": self.Python映射,
+            "line": self.行号,
+            "column": self.列号,
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return self.转为字典()
+
+
+@dataclass(frozen=True, slots=True)
+class 翻译结果:
+    """Structured translation output for compilers and future WebUIs."""
+
+    Python源码: str
+    成语命中列表: tuple[成语命中, ...]
+    结构命中列表: tuple[结构命中, ...]
+
+    @property
+    def python_source(self) -> str:
+        return self.Python源码
+
+    @property
+    def idiom_hits(self) -> tuple[成语命中, ...]:
+        return self.成语命中列表
+
+    @property
+    def structure_hits(self) -> tuple[结构命中, ...]:
+        return self.结构命中列表
+
+    def 转为字典(self) -> dict[str, object]:
+        return {
+            "python_source": self.Python源码,
+            "idiom_hits": [命中.转为字典() for 命中 in self.成语命中列表],
+            "structure_hits": [
+                命中.转为字典() for 命中 in self.结构命中列表
+            ],
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return self.转为字典()
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,7 +182,11 @@ def _是独立彩蛋行(
     return not 前文.strip() and (not 后文 or 后文.startswith("#"))
 
 
-def _替换空格成语(源码: str, 词典: 成语词库) -> str:
+def _替换空格成语(
+    源码: str,
+    词典: 成语词库,
+    命中列表: list[成语命中],
+) -> str:
     """Replace ``色 令 智 昏`` sequences before connected idiom calls."""
 
     词元 = _分词(源码)
@@ -142,13 +232,28 @@ def _替换空格成语(源码: str, 词典: 成语词库) -> str:
             if _是独立彩蛋行(源码, 候选[0], 候选[-1]):
                 文本 += "  # 🥚"
             替换.append(_替换(起点, 终点, 文本))
+            命中列表.append(
+                成语命中(
+                    文本=成语,
+                    模式="spaced",
+                    运行时=str(词典[成语]["runtime"]),
+                    行号=候选[0].start[0],
+                    列号=候选[0].start[1] + 1,
+                    结束行号=候选[-1].end[0],
+                    结束列号=候选[-1].end[1] + 1,
+                )
+            )
             已占用.update(range(起始索引, 末尾索引))
             break
 
     return _应用替换(源码, 替换)
 
 
-def _替换连写调用(源码: str, 词典: 成语词库) -> str:
+def _替换连写调用(
+    源码: str,
+    词典: 成语词库,
+    命中列表: list[成语命中],
+) -> str:
     """Translate an idiom function name without parsing its parentheses."""
 
     词元 = _分词(源码)
@@ -165,11 +270,25 @@ def _替换连写调用(源码: str, 词典: 成语词库) -> str:
         起点, 终点 = _词元范围(当前, 行起点, 源码长度)
         文本 = f'__chengyu_functions__["{当前.string}"]'
         替换.append(_替换(起点, 终点, 文本))
+        命中列表.append(
+            成语命中(
+                文本=当前.string,
+                模式="connected",
+                运行时=str(词典[当前.string]["runtime"]),
+                行号=当前.start[0],
+                列号=当前.start[1] + 1,
+                结束行号=当前.end[0],
+                结束列号=当前.end[1] + 1,
+            )
+        )
 
     return _应用替换(源码, 替换)
 
 
-def _翻译文言结构(源码: str) -> str:
+def _翻译文言结构(
+    源码: str,
+    命中列表: list[结构命中],
+) -> str:
     词元 = _分词(源码)
     行起点 = _行起点(源码)
     源码长度 = len(源码)
@@ -186,10 +305,30 @@ def _翻译文言结构(源码: str) -> str:
             对应 = {"若": "if", "如是": "elif", "否则": "else"}[首项.string]
             起点, 终点 = _词元范围(首项, 行起点, 源码长度)
             替换.append(_替换(起点, 终点, 对应))
+            命中列表.append(
+                结构命中(
+                    文本=首项.string,
+                    类型={"若": "IF", "如是": "ELIF", "否则": "ELSE"}[
+                        首项.string
+                    ],
+                    Python映射=对应,
+                    行号=首项.start[0],
+                    列号=首项.start[1] + 1,
+                )
+            )
         elif len(行词元) == 1 and 首项.type == token.NAME:
             if 首项.string == "云云":
                 起点, 终点 = _词元范围(首项, 行起点, 源码长度)
                 替换.append(_替换(起点, 终点, "# 云云（块尾标记）"))
+                命中列表.append(
+                    结构命中(
+                        文本="云云",
+                        类型="END_MARKER",
+                        Python映射="# comment",
+                        行号=首项.start[0],
+                        列号=首项.start[1] + 1,
+                    )
+                )
         elif (
             len(行词元) >= 2
             and 首项.type == token.NAME
@@ -204,6 +343,15 @@ def _翻译文言结构(源码: str) -> str:
                 _替换(变量起点, 变量终点, f"for {首项.string}")
             )
             替换.append(_替换(虚词起点, 虚词终点, "in"))
+            命中列表.append(
+                结构命中(
+                    文本="之于",
+                    类型="FOR_IN",
+                    Python映射="for ... in ...",
+                    行号=行词元[1].start[0],
+                    列号=行词元[1].start[1] + 1,
+                )
+            )
 
     for 索引, 当前 in enumerate(词元[:-1]):
         if 当前.type != token.NAME or 当前.string != "列":
@@ -212,22 +360,52 @@ def _翻译文言结构(源码: str) -> str:
         if 下一个.type == token.OP and 下一个.string == "(":
             起点, 终点 = _词元范围(当前, 行起点, 源码长度)
             替换.append(_替换(起点, 终点, "print"))
+            命中列表.append(
+                结构命中(
+                    文本="列",
+                    类型="PRINT",
+                    Python映射="print",
+                    行号=当前.start[0],
+                    列号=当前.start[1] + 1,
+                )
+            )
 
     return _应用替换(源码, 替换)
 
 
-def 翻译(源码: str, 词典: 成语词库 | None = None) -> str:
-    """Translate ChengyuLang source using egg-first precedence."""
+def 分析并翻译(
+    源码: str,
+    词典: 成语词库 | None = None,
+) -> 翻译结果:
+    """Translate source and retain structured matches for later stages."""
 
     if not isinstance(源码, str):
         raise TypeError("源码必须是字符串。")
     当前词典 = deepcopy(成语词典 if 词典 is None else 词典)
-    结果 = _替换空格成语(源码, 当前词典)
-    结果 = _替换连写调用(结果, 当前词典)
-    return _翻译文言结构(结果)
+    成语命中列表: list[成语命中] = []
+    结构命中列表: list[结构命中] = []
+    结果 = _替换空格成语(源码, 当前词典, 成语命中列表)
+    结果 = _替换连写调用(结果, 当前词典, 成语命中列表)
+    结果 = _翻译文言结构(结果, 结构命中列表)
+    成语命中列表.sort(key=lambda 项: (项.行号, 项.列号))
+    结构命中列表.sort(key=lambda 项: (项.行号, 项.列号))
+    return 翻译结果(
+        Python源码=结果,
+        成语命中列表=tuple(成语命中列表),
+        结构命中列表=tuple(结构命中列表),
+    )
+
+
+def 翻译(源码: str, 词典: 成语词库 | None = None) -> str:
+    """Translate source while preserving the original string-returning API."""
+
+    return 分析并翻译(源码, 词典).Python源码
 
 
 # English aliases.
 TranslationError = 翻译错误
+IdiomHit = 成语命中
+StructureHit = 结构命中
+TranslationResult = 翻译结果
+analyze_and_translate = 分析并翻译
 translate = 翻译
-

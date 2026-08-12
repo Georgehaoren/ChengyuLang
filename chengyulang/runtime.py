@@ -11,7 +11,8 @@ import time
 from collections import deque
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from functools import reduce
+from copy import deepcopy
+from functools import partial, reduce
 from itertools import islice
 from pathlib import Path
 from typing import Any, TypeVar
@@ -89,6 +90,20 @@ def 调用成语(
             f"成语“{名称}”尚未注册运行时实现：{实现名称}"
         ) from 错误
     return 实现(*参数, **关键字)
+
+
+def 构建运行环境(
+    词典: 成语词库 | None = None,
+) -> tuple[dict[str, 成语函数], Callable[[str], None]]:
+    """Build dispatch objects shared by the executor and compiled files."""
+
+    当前词典 = deepcopy(成语词典 if 词典 is None else 词典)
+    函数表: dict[str, 成语函数] = {
+        名称: partial(调用成语, 名称, _词典=当前词典)
+        for 名称 in 当前词典
+    }
+    彩蛋函数 = partial(触发彩蛋, _词典=当前词典)
+    return 函数表, 彩蛋函数
 
 
 def 触发彩蛋(名称: str, *, _词典: 成语词库 | None = None) -> None:
@@ -537,3 +552,4 @@ register_idiom = 注册成语
 call_idiom = 调用成语
 trigger_egg = 触发彩蛋
 registered_implementations = 已注册实现
+build_runtime_environment = 构建运行环境
