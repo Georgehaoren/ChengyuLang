@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "language": "zh-CN",
+  "idioms": {
+    "云里雾里": {
+      "category": "自定义别名",
+      "py": "复用不知所云的随机乱码实现",
+      "egg": "print('☁️ 雾又浓了三分。')",
+      "runtime": "不知所云"
+    }
+  }
+}
+

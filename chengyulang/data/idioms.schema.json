@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/chengyulang/idioms.schema.json",
+  "title": "ChengyuLang idiom catalog",
+  "type": "object",
+  "required": ["version", "idioms"],
+  "properties": {
+    "version": {"type": "integer", "minimum": 1},
+    "language": {"type": "string"},
+    "idioms": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["category", "py", "egg", "runtime"],
+        "properties": {
+          "category": {"type": "string", "minLength": 1},
+          "py": {"type": "string", "minLength": 1},
+          "egg": {"type": "string", "minLength": 1},
+          "runtime": {"type": "string", "minLength": 1},
+          "safety": {"type": "string"}
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
