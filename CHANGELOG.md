@@ -10,6 +10,7 @@
 - Embedded custom JSON catalog metadata into generated Python files.
 - Unified `run` with the compiler's translation and validation pipeline.
 - Expanded the public API, bilingual documentation and compiler tests.
+- Added `setup_venv.sh` for one-command virtual-environment setup and install.
 
 ## 0.1.0 - 2026-08-11
 

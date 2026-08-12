@@ -25,9 +25,15 @@ cloud-themed egg.
 Python 3.10 or newer is required. There are no runtime dependencies.
 
 ```bash
+chmod +x setup_venv.sh
+./setup_venv.sh
+source .venv/bin/activate
+
 python chengyu_lang.py
 python -m chengyulang demo
-python -m chengyulang translate examples/demo.cy
+python -m chengyulang check examples/demo.cy
+python -m chengyulang compile examples/demo.cy
+python examples/demo.py
 python -m chengyulang run examples/demo.cy --show-python
 ```
 
@@ -37,6 +43,18 @@ Install the CLI locally if desired:
 python -m pip install -e .
 chengyulang run examples/demo.cy
 ```
+
+`setup_venv.sh` creates or reuses `.venv`, installs the checkout in editable
+mode, and runs version and compiler checks. An alternate environment path or
+Python executable can be selected explicitly:
+
+```bash
+./setup_venv.sh /path/to/venv
+CHENGYULANG_PYTHON=python3.12 ./setup_venv.sh
+```
+
+Set `CHENGYULANG_OFFLINE=1` to prohibit build-tool downloads when the venv
+already contains pip 21.3+, setuptools 68+, and wheel.
 
 ## Syntax
 
@@ -53,14 +71,39 @@ chengyulang run examples/demo.cy
 Translation is token-aware: strings and comments remain untouched, and nested
 parentheses do not need to be parsed with a fragile regular expression.
 
+## Console compiler
+
+The first-stage compiler produces deterministic Python source that can be run
+directly in an environment where ChengyuLang is installed:
+
+```bash
+chengyulang check examples/demo.cy
+chengyulang compile examples/demo.cy --show-stages
+python examples/demo.py
+```
+
+Useful options include:
+
+- `-o OUT.py` to select an output path;
+- `--stdout` to emit complete generated Python;
+- `--json` for machine-readable stages, matches, and diagnostics;
+- `--catalog extra.json` to compile with a JSON extension;
+- `--force` to explicitly overwrite an existing output.
+
+`check` and `compile` never execute the input program. The legacy `translate`
+command emits only the internal Python body and is intended for debugging.
+
 ## Modular design
 
 - `data/idioms.json`: JSON metadata for all bundled idioms
 - `catalog.py`: loading, validation, and merging
 - `translator.py`: egg-first token translation
+- `compiler.py`: AST validation, code generation, and atomic output writes
+- `diagnostics.py`: structured diagnostics and console rendering
+- `bootstrap.py`: reproducible generated runtime prelude
 - `runtime.py`: safe implementations and plugin registration
 - `executor.py`: compile/exec and localized errors
-- `cli.py`: `translate`, `run`, `catalog`, and `demo`
+- `cli.py`: `check`, `compile`, `translate`, `run`, `catalog`, and `demo`
 
 ## Extending
 

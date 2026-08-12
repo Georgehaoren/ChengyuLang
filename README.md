@@ -25,6 +25,8 @@ Python 运行时分离：JSON 负责描述，显式注册的 Python 函数负责
 - Token 感知：不会改写字符串或 `#` 注释，嵌套括号无需正则硬解析。
 - JSON 词库：支持校验、覆盖、别名和自定义扩展。
 - 模块化运行时：52 条内置词条都有可执行实现和测试。
+- 控制台编译器：可将 `.cy` 确定性编译为可直接运行的 `.py` 文件。
+- 结构化过程：提供成语命中、文言结构、编译阶段、诊断及 JSON 输出。
 - 零运行时依赖：只使用 Python 标准库。
 
 ## 快速开始
@@ -35,12 +37,19 @@ Python 运行时分离：JSON 负责描述，显式注册的 Python 函数负责
 git clone <your-repository-url>
 cd ChengyuLang
 
+# 一键创建 .venv 并安装当前项目（macOS / Linux）
+chmod +x setup_venv.sh
+./setup_venv.sh
+source .venv/bin/activate
+
 # 无需安装即可演示
 python chengyu_lang.py
 
 # 或以模块方式运行
 python -m chengyulang demo
-python -m chengyulang translate examples/demo.cy
+python -m chengyulang check examples/demo.cy
+python -m chengyulang compile examples/demo.cy
+python examples/demo.py
 python -m chengyulang run examples/demo.cy --show-python
 ```
 
@@ -50,6 +59,18 @@ python -m chengyulang run examples/demo.cy --show-python
 python -m pip install -e .
 chengyulang run examples/demo.cy
 ```
+
+`setup_venv.sh` 默认创建或复用仓库中的 `.venv`，以 editable 模式安装当前源码，
+并执行版本检查和示例源码检查。也可以指定其他路径或 Python：
+
+```bash
+./setup_venv.sh /path/to/venv
+CHENGYULANG_PYTHON=python3.12 ./setup_venv.sh
+```
+
+脚本需要 Python 3.10+；不会删除或重建已经存在的虚拟环境。若处于离线环境且
+venv 中已准备好 `pip>=21.3`、`setuptools>=68` 和 `wheel`，可使用
+`CHENGYULANG_OFFLINE=1` 禁止下载构建工具。
 
 ## 语法示例
 
@@ -87,13 +108,26 @@ print("随机乱码：", __chengyu_functions__["不知所云"](12))
 | 命令 | 用途 |
 | --- | --- |
 | `chengyulang demo` | 运行内置演示 |
-| `chengyulang translate FILE` | 输出 Python 译文 |
-| `chengyulang translate FILE -o FILE.py` | 把译文写入文件 |
+| `chengyulang check FILE` | 检查源码但不写文件 |
+| `chengyulang compile FILE` | 生成可直接运行的同名 `.py` 文件 |
+| `chengyulang compile FILE -o OUT.py` | 指定编译产物路径 |
+| `chengyulang compile FILE --stdout` | 将完整 Python 产物输出至标准输出 |
+| `chengyulang compile FILE --json` | 输出机器可读的阶段、命中和诊断信息 |
 | `chengyulang run FILE` | 翻译并执行可信源码 |
+| `chengyulang translate FILE` | 仅输出不含运行时引导的内部译文 |
 | `chengyulang catalog` | 校验并列出词库 |
 | `--catalog extra.json` | 在内置词库上扩展或覆盖 JSON 词条 |
 
-用 `-` 代替文件名可从标准输入读取。
+默认拒绝覆盖已有文件；确认覆盖时使用 `--force`。用 `-` 代替文件名可从标准输入
+读取，此时 `compile` 需要同时指定 `--stdout`、`--output` 或 `--check`。
+
+编译过程不会执行用户代码。生成的 `.py` 文件包含确定性的运行时引导和词库快照，
+仍需在已经安装 ChengyuLang 的 Python 环境中运行：
+
+```bash
+chengyulang compile examples/demo.cy --show-stages
+python examples/demo.py
+```
 
 ## 项目结构
 
@@ -102,9 +136,12 @@ chengyulang/
 ├── data/idioms.json       # 52 条词库元数据
 ├── catalog.py             # JSON 加载、校验与合并
 ├── translator.py          # Token 感知翻译器
+├── compiler.py            # AST 检查、代码生成与原子写入
+├── diagnostics.py         # 结构化诊断与控制台渲染
+├── bootstrap.py           # 可复现的运行时引导代码
 ├── runtime.py             # 安全实现与插件注册表
-├── executor.py            # compile / exec 与文言化报错
-└── cli.py                 # translate / run / catalog / demo
+├── executor.py            # 受信源码执行器
+└── cli.py                 # check / compile / translate / run / catalog
 examples/                  # .cy、JSON 扩展与 Python 插件示例
 tests/                     # 标准库 unittest 测试
 chengyu_lang.py            # 兼容最初单文件设想的入口
@@ -167,6 +204,9 @@ python -m examples.plugin_demo
 
 成语语不是安全沙箱。`.cy` 源码最终会经 `compile()` 和 `exec()` 作为 Python
 执行，因此只能运行自己编写或已经审查的源码。
+
+`check` 和 `compile` 只进行翻译、AST 验证及文件生成，不会执行源码；`run` 及
+生成后的 `.py` 文件则拥有当前 Python 进程的权限。
 
 内置的高风险脑洞已经降为无副作用实现：
 
