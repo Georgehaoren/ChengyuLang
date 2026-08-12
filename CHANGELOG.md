@@ -7,4 +7,4 @@
 - Moved all 52 idiom definitions to a validated UTF-8 JSON catalog.
 - Added safe runtime implementations, including `不知所云` random gibberish.
 - Added CLI commands, examples, tests, packaging metadata and CI.
-
+- Added Chinese and English AI-assisted creation notices to the README files.
