@@ -103,4 +103,18 @@ dry-run plans and do not perform those actions. See [SECURITY.md](SECURITY.md).
 python -m unittest discover -s tests -v
 ```
 
+## AI-Assisted Creation Notice
+
+The project's core concept, product direction, language mechanics, and major
+technical decisions were proposed and directed by the project author.
+Generative AI was used to assist with brainstorming, design organization,
+parts of the implementation, test design, and Chinese/English documentation.
+All AI-assisted material was reviewed, revised, and tested by the project
+author, who remains responsible for the released content, technical decisions,
+and potential issues.
+
+Contributors are encouraged to disclose materially AI-assisted code or
+documentation in their pull requests and remain responsible for reviewing,
+testing, and checking the license compatibility of their contributions.
+
 Licensed under the [MIT License](LICENSE).

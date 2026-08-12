@@ -194,9 +194,16 @@ python -m compileall -q chengyulang chengyu_lang.py
 - 做中文语义双关与编程梗；
 - 继续扩展 AST、REPL、编辑器高亮或插件机制。
 
-推荐的 GitHub Description：
 
-> A playful Python-backed Chinese idiom DSL where spacing changes semantics.
+## AI 辅助创作声明
+
+本项目的核心创意、产品方向、语言机制与主要技术决策由项目作者提出并主导。
+开发过程中使用了生成式 AI 辅助头脑风暴、方案整理、部分代码实现、测试设计及
+中英文文档编写。所有 AI 辅助生成的内容均由项目作者进行人工审阅、修改与测试；
+项目作者对最终发布内容、技术取舍及潜在问题承担责任。
+
+如提交由生成式 AI 实质性辅助完成的代码或文档，欢迎贡献者在 Pull Request 中
+如实说明使用范围，并自行完成必要的审阅、测试及许可证兼容性检查。
 
 ## License
 
